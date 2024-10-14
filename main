@@ -1,0 +1,108 @@
+import React, { useState } from 'react';
+import Chart from 'react-apexcharts';
+import DatePicker from 'react-datepicker'; // For the date range picker
+import "react-datepicker/dist/react-datepicker.css"; // Import styles
+
+interface BookingData {
+  arrival_date_year: number;
+  arrival_date_month: string;
+  arrival_date_day_of_month: number;
+  adults: number;
+  children: number;
+  babies: number;
+  country: string;
+}
+
+const Dashboard = () => {
+  // Sample booking data
+  const bookings: BookingData[] = [
+    // Your 1000 records would go here
+  ];
+
+  // State for date selection
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+
+  // Filtering data based on selected date range
+  const filteredData = bookings.filter(booking => {
+    const arrivalDate = new Date(booking.arrival_date_year, new Date(booking.arrival_date_month + ' 1').getMonth(), booking.arrival_date_day_of_month);
+    return (!startDate || arrivalDate >= startDate) && (!endDate || arrivalDate <= endDate);
+  });
+
+  // Aggregating data for charts
+  const dailyVisitors = filteredData.reduce((acc, curr) => {
+    const date = `${curr.arrival_date_year}-${curr.arrival_date_month}-${curr.arrival_date_day_of_month}`;
+    acc[date] = acc[date] || { adults: 0, children: 0, babies: 0 };
+    acc[date].adults += curr.adults;
+    acc[date].children += curr.children;
+    acc[date].babies += curr.babies;
+    return acc;
+  }, {});
+
+  const countryVisitors = filteredData.reduce((acc, curr) => {
+    acc[curr.country] = acc[curr.country] || 0;
+    acc[curr.country] += curr.adults + curr.children + curr.babies;
+    return acc;
+  }, {});
+
+  const totalAdults = filteredData.reduce((sum, curr) => sum + curr.adults, 0);
+  const totalChildren = filteredData.reduce((sum, curr) => sum + curr.children, 0);
+
+  // Chart options and series
+  const timeSeriesOptions = {
+    chart: { id: 'time-series' },
+    xaxis: { categories: Object.keys(dailyVisitors) },
+    yaxis: { title: { text: 'Visitors' } },
+  };
+  const timeSeriesData = [{
+    name: 'Total Visitors',
+    data: Object.values(dailyVisitors).map((v: any) => v.adults + v.children + v.babies),
+  }];
+
+  const columnChartOptions = {
+    chart: { id: 'column-chart' },
+    xaxis: { categories: Object.keys(countryVisitors) },
+    yaxis: { title: { text: 'Visitors by Country' } },
+  };
+  const columnChartData = [{
+    name: 'Visitors',
+    data: Object.values(countryVisitors),
+  }];
+
+  const sparklineOptions = {
+    chart: { type: 'line', sparkline: { enabled: true } },
+    stroke: { curve: 'smooth' },
+  };
+  const sparklineAdultData = [{ name: 'Adults', data: [totalAdults] }];
+  const sparklineChildrenData = [{ name: 'Children', data: [totalChildren] }];
+
+  return (
+    <div className="dashboard">
+      <div className="date-picker">
+        <DatePicker selected={startDate} onChange={(date) => setStartDate(date)} placeholderText="Start Date" />
+        <DatePicker selected={endDate} onChange={(date) => setEndDate(date)} placeholderText="End Date" />
+      </div>
+
+      <div className="charts">
+        <div className="chart">
+          <h3>Time Series: Visitors per Day</h3>
+          <Chart options={timeSeriesOptions} series={timeSeriesData} type="line" />
+        </div>
+        <div className="chart">
+          <h3>Column Chart: Visitors by Country</h3>
+          <Chart options={columnChartOptions} series={columnChartData} type="bar" />
+        </div>
+        <div className="sparkline-chart">
+          <h3>Sparkline: Adults</h3>
+          <Chart options={sparklineOptions} series={sparklineAdultData} type="line" />
+        </div>
+        <div className="sparkline-chart">
+          <h3>Sparkline: Children</h3>
+          <Chart options={sparklineOptions} series={sparklineChildrenData} type="line" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
